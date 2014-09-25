@@ -53,7 +53,7 @@ def main():
 
     print(timings)
 
-def test_timings(args, index, size):
+def test_timings(args, index, size, qry_plan):
     print("* Testing index {}, size {}".format(index, size))
 
     radius = size / 2.0
@@ -63,12 +63,6 @@ def test_timings(args, index, size):
     res = plan(bbox[0], bbox[1], bbox[2], bbox[3], -radius)
     bbox = res[0]
 
-    where = ''
-    if args.where:
-        where = 'and (' + args.where + ')'
-
-    plan = conn.prepare('select count(*) c from {} where way && SetSRID(MakeBox2D(ST_Point($1, $2), ST_Point($3, $4)), 900913) {}'.format(args.table, where))
-
     time_start = datetime.datetime.now()
     passes = 0
     avg_item_count = 0
@@ -76,7 +70,7 @@ def test_timings(args, index, size):
         x = random.random() * (bbox[2] - bbox[0]) + bbox[0]
         y = random.random() * (bbox[3] - bbox[1]) + bbox[1]
 
-        res = plan(x - radius, y - radius, x + radius, y + radius)
+        res = qry_plan(x - radius, y - radius, x + radius, y + radius)
         avg_item_count += res[0]['c']
         passes += 1
 
@@ -95,15 +89,27 @@ def test_timings(args, index, size):
     return ret
 
 def test(args, index, sizes):
+    print("* Testing index {}, query plan:".format(index))
     plan = conn.prepare('begin');
     plan()
+
+    where = ''
+    if args.where:
+        where = 'and (' + args.where + ')'
 
     for i in args.indexes:
         if i != index:
             plan = conn.prepare('drop index ' + i);
             plan()
 
-    ret = { s: test_timings(args, index, s) for s in sizes }
+    plan = conn.prepare('explain select count(*) c from {} where way && SetSRID(MakeBox2D(ST_Point($1, $2), ST_Point($3, $4)), 900913) {}'.format(args.table, where))
+    res = plan(0, 0, 0, 0)
+    for r in res:
+        print('  ' + r[0])
+
+    qry_plan = conn.prepare('select count(*) c from {} where way && SetSRID(MakeBox2D(ST_Point($1, $2), ST_Point($3, $4)), 900913) {}'.format(args.table, where))
+
+    ret = { s: test_timings(args, index, s, qry_plan) for s in sizes }
 
     plan = conn.prepare('rollback');
     plan()
