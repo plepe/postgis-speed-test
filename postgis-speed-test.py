@@ -32,6 +32,9 @@ parser.add_argument('-b', '--bbox', dest='bounding_box',
 parser.add_argument('-i', '--indexes', dest='indexes', nargs='+',
     help='List of indexes which should be tested.')
 
+parser.add_argument('-w', '--where', dest='where',
+    help='Where selector, e.g. "tags @> \'amenity=>restaurant\'"')
+
 def main():
     args = parser.parse_args()
 
@@ -60,7 +63,11 @@ def test_timings(args, index, size):
     res = plan(bbox[0], bbox[1], bbox[2], bbox[3], -radius)
     bbox = res[0]
 
-    plan = conn.prepare('select count(*) c from {} where way && SetSRID(MakeBox2D(ST_Point($1, $2), ST_Point($3, $4)), 900913)'.format(args.table))
+    where = ''
+    if args.where:
+        where = 'and (' + args.where + ')'
+
+    plan = conn.prepare('select count(*) c from {} where way && SetSRID(MakeBox2D(ST_Point($1, $2), ST_Point($3, $4)), 900913) {}'.format(args.table, where))
 
     time_start = datetime.datetime.now()
     passes = 0
