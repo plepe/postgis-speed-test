@@ -60,7 +60,7 @@ def test_timings(args, index, size):
     res = plan(bbox[0], bbox[1], bbox[2], bbox[3], -radius)
     bbox = res[0]
 
-    plan = conn.prepare('select count(*) c from planet_osm_line where way && SetSRID(MakeBox2D(ST_Point($1, $2), ST_Point($3, $4)), 900913)')
+    plan = conn.prepare('select count(*) c from {} where way && SetSRID(MakeBox2D(ST_Point($1, $2), ST_Point($3, $4)), 900913)'.format(args.table))
 
     time_start = datetime.datetime.now()
     passes = 0
