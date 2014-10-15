@@ -4,6 +4,7 @@ import argparse
 import postgresql
 import datetime
 import random
+import csv
 
 parser = argparse.ArgumentParser(description='Speed tests on a PostgreSQL/Postgis database table')
 
@@ -25,6 +26,10 @@ parser.add_argument('-H', '--host', dest='host',
 
 parser.add_argument('-t', '--table', dest='table',
     help='Name of the database table to test')
+
+parser.add_argument('-o', '--output', dest='output',
+    default='output.csv',
+    help='Filename where to put CSV data (default: output.csv)')
 
 parser.add_argument('-b', '--bbox', dest='bounding_box',
     help='Region in which tests are being performed')
@@ -55,7 +60,16 @@ def main():
             for i in args.indexes
         }
 
-    print(timings)
+    csvfile = open(args.output, 'w', newline='')
+    writer = csv.writer(csvfile)
+
+    writer.writerow(['index_name', 'size', 'duration', 'passes', 'time_per_pass', 'avg_item_count'])
+
+    for t, td in timings.items():
+        for s, d in td.items():
+            writer.writerow([t, s, d['duration'], d['passes'], d['time_per_pass'], d['avg_item_count']])
+    csvfile.close()
+    print('Created file {}'.format(args.output))
 
 def test_timings(args, index, size, qry_plan):
     print("* Testing index {}, size {}".format(index, size))
