@@ -32,6 +32,10 @@ parser.add_argument('-b', '--bbox', dest='bounding_box',
 parser.add_argument('-i', '--indexes', dest='indexes', nargs='+',
     help='List of indexes which should be tested.')
 
+parser.add_argument('-D', '--drop', dest='drop_indexes', nargs='+',
+    default=[],
+    help='List of indexes which should (temporarily) be dropped to avoid accidential usage.')
+
 parser.add_argument('-w', '--where', dest='where',
     help='Where selector, e.g. "tags @> \'amenity=>restaurant\'"')
 
@@ -101,6 +105,10 @@ def test(args, index, sizes):
         if i != index:
             plan = conn.prepare('drop index ' + i);
             plan()
+
+    for i in args.drop_indexes:
+        plan = conn.prepare('drop index ' + i);
+        plan()
 
     plan = conn.prepare('explain select count(*) c from {} where way && SetSRID(MakeBox2D(ST_Point($1, $2), ST_Point($3, $4)), 900913) {}'.format(args.table, where))
     res = plan(0, 0, 0, 0)
